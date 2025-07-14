@@ -80,32 +80,34 @@ while running:
 
         # Key press
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
+            if event.key == pygame.K_a:
                 moving_left = True
                 facing1 = "left"
-            if event.key == pygame.K_RIGHT:
+            if event.key == pygame.K_d:
                 moving_right = True
                 facing1 = "right"
-            if event.key == pygame.K_UP:
+            if event.key == pygame.K_w:
                 moving_up = True
                 facing1 = "up"
-            if event.key == pygame.K_DOWN:
+            if event.key == pygame.K_s:
                 moving_down = True
                 facing1 = "down"
-            if event.key == pygame.K_SLASH:
-                attack1 = True
-                attack_timer1 = current_time
 
         # Key release
         if event.type == pygame.KEYUP:
-            if event.key == pygame.K_LEFT:
+            if event.key == pygame.K_a:
                 moving_left = False
-            if event.key == pygame.K_RIGHT:
+            if event.key == pygame.K_d:
                 moving_right = False
-            if event.key == pygame.K_UP:
+            if event.key == pygame.K_w:
                 moving_up = False
-            if event.key == pygame.K_DOWN:
+            if event.key == pygame.K_s:
                 moving_down = False
+
+        # Left mouse button attack
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            attack1 = True
+            attack_timer1 = current_time
 
     # Move player
     if moving_right:
@@ -169,13 +171,13 @@ while running:
         hitbox_width = 30
         hitbox_height = 30
         if facing == "right":
-            return pygame.Rect(x + width, y + height//2 - hitbox_height//2, hitbox_width, hitbox_height)
+            return pygame.Rect(x + width, y + height // 2 - hitbox_height // 2, hitbox_width, hitbox_height)
         elif facing == "left":
-            return pygame.Rect(x - hitbox_width, y + height//2 - hitbox_height//2, hitbox_width, hitbox_height)
+            return pygame.Rect(x - hitbox_width, y + height // 2 - hitbox_height // 2, hitbox_width, hitbox_height)
         elif facing == "up":
-            return pygame.Rect(x + width//2 - hitbox_width//2, y - hitbox_height, hitbox_width, hitbox_height)
+            return pygame.Rect(x + width // 2 - hitbox_width // 2, y - hitbox_height, hitbox_width, hitbox_height)
         else:  # down
-            return pygame.Rect(x + width//2 - hitbox_width//2, y + height, hitbox_width, hitbox_height)
+            return pygame.Rect(x + width // 2 - hitbox_width // 2, y + height, hitbox_width, hitbox_height)
 
     # Player attack
     if attack1 and current_time - attack_timer1 <= attack_duration:
