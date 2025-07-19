@@ -5,7 +5,7 @@ import os
 # Init
 pygame.init()
 
-# Set working directory (where castle.png etc. are stored)
+# Set working directory (adjust this to your asset folder path)
 os.chdir("D:/GithubPython/final")
 
 # Window setup
@@ -19,7 +19,7 @@ bg_image = pygame.image.load('castle.png').convert()
 bg_width = bg_image.get_width()
 
 # Character setup
-Entity_width = 150
+Entity_width = 300
 Entity_height = 300
 Entity_x = 500
 Entity_y = 350
@@ -27,11 +27,17 @@ normal_speed = 5
 run_speed = 9
 speed = normal_speed
 
-# Custom hitbox setup
-HITBOX_OFFSET_X = 13.25
-HITBOX_OFFSET_Y = 25
-HITBOX_WIDTH = 30
-HITBOX_HEIGHT = 60
+# Hitbox sizes (customize here)
+# Idle hitbox (centered on character)
+IDLE_HITBOX_WIDTH = 10
+IDLE_HITBOX_HEIGHT = 10
+IDLE_HITBOX_OFFSET_X = (Entity_width - IDLE_HITBOX_WIDTH) // 2
+IDLE_HITBOX_OFFSET_Y = (Entity_height - IDLE_HITBOX_HEIGHT) // 2
+
+# Attack hitbox (in front of character)
+ATTACK_HITBOX_WIDTH = 30
+ATTACK_HITBOX_HEIGHT = 30
+ATTACK_HITBOX_OFFSET_Y = 10
 
 # Movement limits
 TOP_LIMIT_Y = HEIGHT - 290
@@ -40,24 +46,21 @@ LEFT_LIMIT_X = 0
 RIGHT_LIMIT_X = WIDTH
 
 # Load and scale images
-entity_img1 = pygame.image.load("idleright_1.png")
-entity_img2 = pygame.image.load("idleright_1.png")
-entity_imgforward = pygame.image.load("idleright_1.png")
-entity_imgbackward = pygame.image.load("idleright_1.png")
+def load_scaled(name):
+    return pygame.transform.scale(pygame.image.load(name), (Entity_width, Entity_height))
 
-entity_img1 = pygame.transform.scale(entity_img1, (Entity_width, Entity_height))
-entity_img2 = pygame.transform.scale(entity_img2, (Entity_width, Entity_height))
-entity_imgforward = pygame.transform.scale(entity_imgforward, (Entity_width, Entity_height))
-entity_imgbackward = pygame.transform.scale(entity_imgbackward, (Entity_width, Entity_height))
+entity_img1 = load_scaled("idleright_1.png")
+entity_img2 = load_scaled("idleright_1.png")
+entity_imgforward = load_scaled("idleright_1.png")
+entity_imgbackward = load_scaled("idleright_1.png")
 
 # Load idle right animation frames
 idle_right_frames = [
-    pygame.transform.scale(pygame.image.load(f"idleright_{i}.png"), (Entity_width, Entity_height))
-    for i in range(1, 6)
+    load_scaled(f"idleright_{i}.png") for i in range(1, 6)
 ]
 idle_frame_index = 0
 idle_last_update = pygame.time.get_ticks()
-idle_frame_delay = 200  # 0.2 seconds
+idle_frame_delay = 200
 
 # Animation state
 current_img1 = entity_img1
@@ -76,16 +79,16 @@ running_fast = False
 
 # Attack state
 attack1 = False
-attack_duration = 300  # ms
+attack_duration = 300
 attack_timer1 = 0
 
 # Font and damage display
 font = pygame.font.SysFont(None, 30)
 damage_msg = ""
 damage_timer = 0
-damage_duration = 1000  # 1 second
+damage_duration = 1000
 
-# Health and Energy system
+# Health and Energy
 max_health = 100
 current_health = 100
 max_energy = 100
@@ -96,13 +99,23 @@ run_energy_cost = 0.5
 # Hitbox toggle
 show_hitbox = False
 
-# === Draw bar function ===
+# Draw bar utility
 def draw_bar(surf, x, y, w, h, pct, color, border_color=(255, 255, 255)):
-    pygame.draw.rect(surf, border_color, (x - 2, y - 2, w + 4, h + 4))  # border
+    pygame.draw.rect(surf, border_color, (x - 2, y - 2, w + 4, h + 4))
     fill = (pct / 100) * w
     pygame.draw.rect(surf, color, (x, y, fill, h))
 
-# MAIN LOOP
+# Function to get attack hitbox depending on facing
+def get_attack_hitbox(x, y, width, height, facing):
+    if facing == "right":
+        return pygame.Rect(x + width, y + ATTACK_HITBOX_OFFSET_Y, ATTACK_HITBOX_WIDTH, ATTACK_HITBOX_HEIGHT)
+    elif facing == "left":
+        return pygame.Rect(x - ATTACK_HITBOX_WIDTH, y + ATTACK_HITBOX_OFFSET_Y, ATTACK_HITBOX_WIDTH, ATTACK_HITBOX_HEIGHT)
+    elif facing == "up":
+        return pygame.Rect(x + (width - ATTACK_HITBOX_WIDTH)//2, y - ATTACK_HITBOX_HEIGHT, ATTACK_HITBOX_WIDTH, ATTACK_HITBOX_HEIGHT)
+    else:  # down
+        return pygame.Rect(x + (width - ATTACK_HITBOX_WIDTH)//2, y + height, ATTACK_HITBOX_WIDTH, ATTACK_HITBOX_HEIGHT)
+
 clock = pygame.time.Clock()
 running = True
 
@@ -145,23 +158,21 @@ while running:
             if event.key == pygame.K_LSHIFT or event.key == pygame.K_RSHIFT:
                 running_fast = False
 
-        # Left mouse button attack
+        # Left mouse attack
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             attack1 = True
             attack_timer1 = current_time
 
-    # Run or walk speed and energy management
+    # Speed and energy logic
     if running_fast and current_energy > 0:
         speed = run_speed
         current_energy -= run_energy_cost
         current_energy = max(0, current_energy)
     else:
         speed = normal_speed
-        if current_energy < max_energy:
-            current_energy += energy_regen_rate
-            current_energy = min(current_energy, max_energy)
+        current_energy = min(current_energy + energy_regen_rate, max_energy)
 
-    # Move player
+    # Move entity
     if moving_right:
         Entity_x += speed
     if moving_left:
@@ -171,11 +182,11 @@ while running:
     if moving_down:
         Entity_y += speed
 
-    # Clamp player position
+    # Clamp movement
     Entity_x = max(LEFT_LIMIT_X, min(Entity_x, RIGHT_LIMIT_X - Entity_width))
     Entity_y = max(TOP_LIMIT_Y - Entity_height, min(Entity_y, BOTTOM_LIMIT_Y - Entity_height))
 
-    # Animate based on state
+    # Animate idle or movement
     if facing1 == "right" and not (moving_left or moving_right or moving_up or moving_down):
         if current_time - idle_last_update >= idle_frame_delay:
             idle_frame_index = (idle_frame_index + 1) % len(idle_right_frames)
@@ -185,8 +196,6 @@ while running:
         if current_time - last_switch_time >= frame_interval:
             current_img1 = entity_img2 if current_img1 == entity_img1 else entity_img1
             last_switch_time = current_time
-
-        # Set correct image for direction
         if moving_right:
             current_img1 = entity_imgforward
         elif moving_left:
@@ -210,59 +219,42 @@ while running:
     if bg_x2 >= bg_width:
         bg_x2 = bg_x1 - bg_width
 
-    # Draw everything
+    # Draw background and character
     DISPLAYSURF.blit(bg_image, (bg_x1, 0))
     DISPLAYSURF.blit(bg_image, (bg_x2, 0))
-
-    # Draw player
     DISPLAYSURF.blit(current_img1, (Entity_x, Entity_y))
 
-    # Create and draw separate hitbox
-    hitbox_rect = pygame.Rect(
-        Entity_x + HITBOX_OFFSET_X,
-        Entity_y + HITBOX_OFFSET_Y,
-        HITBOX_WIDTH,
-        HITBOX_HEIGHT
+    # Draw idle hitbox (centered)
+    idle_hitbox_rect = pygame.Rect(
+        int(Entity_x + IDLE_HITBOX_OFFSET_X),
+        int(Entity_y + IDLE_HITBOX_OFFSET_Y),
+        IDLE_HITBOX_WIDTH,
+        IDLE_HITBOX_HEIGHT
     )
-
     if show_hitbox:
-        pygame.draw.rect(DISPLAYSURF, (0, 255, 0), hitbox_rect, 2)
+        pygame.draw.rect(DISPLAYSURF, (0, 255, 0), idle_hitbox_rect, 2)
 
-    # Attack hitbox function
-    def get_hitbox(x, y, width, height, facing):
-        hitbox_width = 30
-        hitbox_height = 30
-        if facing == "right":
-            return pygame.Rect(x + width, y + height // 2 - hitbox_height // 2, hitbox_width, hitbox_height)
-        elif facing == "left":
-            return pygame.Rect(x - hitbox_width, y + height // 2 - hitbox_height // 2, hitbox_width, hitbox_height)
-        elif facing == "up":
-            return pygame.Rect(x + width // 2 - hitbox_width // 2, y - hitbox_height, hitbox_width, hitbox_height)
-        else:  # down
-            return pygame.Rect(x + width // 2 - hitbox_width // 2, y + height, hitbox_width, hitbox_height)
-
-    # Player attack
-    if attack1 and current_time - attack_timer1 <= attack_duration:
-        attack_rect = get_hitbox(Entity_x, Entity_y, Entity_width, Entity_height, facing1)
-        pygame.draw.rect(DISPLAYSURF, (255, 255, 0), attack_rect, 2)
+    # Attack logic & draw attack hitbox
+    if attack1 and current_time - attack_timer1 <=  attack_duration:
+        attack_hitbox_rect = get_attack_hitbox(Entity_x, Entity_y, Entity_width, Entity_height, facing1)
+        pygame.draw.rect(DISPLAYSURF, (255, 255, 0), attack_hitbox_rect, 2)
     else:
         attack1 = False
 
-    # Display damage message
+    # Damage message
     if damage_msg and current_time - damage_timer <= damage_duration:
         text = font.render(damage_msg, True, (255, 0, 0))
         DISPLAYSURF.blit(text, (WIDTH // 2 - text.get_width() // 2, 50))
     else:
         damage_msg = ""
 
-    # Draw health and energy bars
-    draw_bar(DISPLAYSURF, 20, HEIGHT - 60, 200, 20, current_health, (255, 0, 0))  # Health bar
-    draw_bar(DISPLAYSURF, 20, HEIGHT - 30, 200, 20, current_energy, (0, 0, 255))  # Energy bar
-
-    # Text
+    # Draw UI bars
+    draw_bar(DISPLAYSURF, 20, HEIGHT - 60, 200, 20, current_health, (255, 0, 0))
+    draw_bar(DISPLAYSURF, 20, HEIGHT - 30, 200, 20, current_energy, (0, 0, 255))
     DISPLAYSURF.blit(font.render(f'HP: {int(current_health)}', True, (255, 255, 255)), (230, HEIGHT - 60))
     DISPLAYSURF.blit(font.render(f'EN: {int(current_energy)}', True, (255, 255, 255)), (230, HEIGHT - 30))
 
+    # Update display
     pygame.display.update()
     clock.tick(60)
 
